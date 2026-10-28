@@ -162,6 +162,7 @@ router.post('/', (req, res) => {
       customer_name,
       customer_email,
       description,
+      status = 'Open',
       priority = 'Medium',
       assignee_id = null,
       author = 'System',
@@ -177,9 +178,20 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
     }
 
+    const VALID_STATUSES = ['Open', 'In Progress', 'Waiting on Customer', 'Resolved'];
+    if (!VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` });
+    }
+
     const VALID_PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
     if (!VALID_PRIORITIES.includes(priority)) {
       return res.status(400).json({ error: `Invalid priority. Must be one of: ${VALID_PRIORITIES.join(', ')}` });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customer_email.trim())) {
+      return res.status(400).json({ error: 'Invalid email format' });
     }
 
     // Verify assignee exists if provided
@@ -331,21 +343,30 @@ router.patch('/:id', (req, res) => {
 
     if (req.body.assignee_id !== undefined) {
       const newAssigneeId = req.body.assignee_id === null ? null : Number(req.body.assignee_id);
-      if (newAssigneeId !== null) {
-        const agent = queryOne('SELECT name FROM agents WHERE id = ?', [newAssigneeId]);
-        if (!agent) {
-          return res.status(400).json({ error: `No agent found with id ${newAssigneeId}` });
+      const oldAssigneeId = existing.assignee_id;
+      
+      // Only record activity if assignee actually changes
+      if (newAssigneeId !== oldAssigneeId) {
+        if (newAssigneeId !== null) {
+          const agent = queryOne('SELECT name FROM agents WHERE id = ?', [newAssigneeId]);
+          if (!agent) {
+            return res.status(400).json({ error: `No agent found with id ${newAssigneeId}` });
+          }
+          updates.push('assignee_id = ?');
+          values.push(newAssigneeId);
+          activities.push({
+            type: 'assigned',
+            desc: `Assigned to ${agent.name}`,
+          });
+        } else {
+          updates.push('assignee_id = ?');
+          values.push(null);
+          activities.push({ type: 'unassigned', desc: 'Removed assignee' });
         }
+      } else {
+        // No change, but still update to match request (no activity)
         updates.push('assignee_id = ?');
         values.push(newAssigneeId);
-        activities.push({
-          type: 'assigned',
-          desc: `Assigned to ${agent.name}`,
-        });
-      } else {
-        updates.push('assignee_id = ?');
-        values.push(null);
-        activities.push({ type: 'unassigned', desc: 'Removed assignee' });
       }
     }
 
