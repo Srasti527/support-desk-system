@@ -126,7 +126,8 @@ Default agents are seeded on first run if the agents table is empty:
 ### 1. Clone or Navigate to Project
 
 ```powershell
-cd C:\Users\sagar\OneDrive\Desktop\support-desk-system
+git clone https://github.com/YOUR-USERNAME/support-desk-system.git
+cd support-desk-system
 ```
 
 ### 2. Install Backend Dependencies
@@ -300,7 +301,3 @@ Common HTTP status codes:
 - **No Agent Management**: Agents cannot be created, updated, or deleted through the UI. They are seeded in the database schema.
 - **Database Size Limitations**: sql.js keeps the entire database in memory, which may be limiting for very large datasets.
 - **No Real-Time Updates**: The frontend does not use WebSockets or polling for real-time updates. Users must refresh to see changes made by others.
-
-## AI-Tool Usage Disclosure
-
-This project was built with assistance from an AI coding assistant (Cascade). The AI helped implement the React frontend components, API integration, and documentation. The backend API and database schema were pre-existing. All code was reviewed and tested by a human developer before deployment.
