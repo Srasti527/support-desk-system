@@ -6,3 +6,6 @@ dist/
 build/
 *.log
 npm-debug.log*
+
+# SQLite database file (generated at runtime, not committed to Git)
+server/support_desk.db
