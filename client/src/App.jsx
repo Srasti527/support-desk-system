@@ -1,58 +1,131 @@
-import { useState, useEffect } from 'react'
-import './App.css'
+/**
+ * App Component
+ * -------------
+ * Main application with sidebar navigation and view routing.
+ */
+
+import { useState, useCallback } from 'react';
+import Dashboard from './components/Dashboard';
+import TicketList from './components/TicketList';
+import CreateTicket from './components/CreateTicket';
+import TicketDetail from './components/TicketDetail';
 
 function App() {
-  // This piece of state holds the health-check result from the backend
-  const [health, setHealth] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const [refreshDashboard, setRefreshDashboard] = useState(null);
 
-  // When the page first loads, ask the backend if it's alive
-  useEffect(() => {
-    fetch('http://localhost:5000/api/health')
-      .then((res) => res.json())
-      .then((data) => {
-        setHealth(data)
-        setLoading(false)
-      })
-      .catch(() => {
-        setError('Could not reach the backend. Make sure the server is running.')
-        setLoading(false)
-      })
-  }, [])
+  const handleTicketClick = (id) => {
+    setSelectedTicketId(id);
+    setCurrentView('ticket-detail');
+  };
+
+  const handleBackToTickets = () => {
+    setSelectedTicketId(null);
+    setCurrentView('tickets');
+  };
+
+  const handleTicketUpdated = useCallback(() => {
+    setRefreshDashboard((prev) => (prev ? prev() : null));
+  }, []);
+
+  const setDashboardRefresh = useCallback((refreshFn) => {
+    setRefreshDashboard(() => refreshFn);
+  }, []);
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1>🎫 Support Desk System</h1>
-        <p className="subtitle">Full-Stack Engineering Assessment Project</p>
-      </header>
+    <div className="layout">
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <h1>
+            <span>🎫</span>
+            <span>Support Desk</span>
+          </h1>
+        </div>
+        <nav className="sidebar-nav">
+          <button
+            className={`nav-item ${currentView === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setCurrentView('dashboard')}
+          >
+            <span className="icon">📊</span>
+            <span className="label">Dashboard</span>
+          </button>
+          <button
+            className={`nav-item ${currentView === 'tickets' ? 'active' : ''}`}
+            onClick={() => setCurrentView('tickets')}
+          >
+            <span className="icon">📋</span>
+            <span className="label">Tickets</span>
+          </button>
+          <button
+            className={`nav-item ${currentView === 'create' ? 'active' : ''}`}
+            onClick={() => setCurrentView('create')}
+          >
+            <span className="icon">➕</span>
+            <span className="label">New Ticket</span>
+          </button>
+        </nav>
+      </aside>
 
-      <main className="app-main">
-        <div className="card">
-          <h2>Backend Health Check</h2>
-          {loading && <p className="status loading">⏳ Checking backend…</p>}
-          {error && <p className="status error">❌ {error}</p>}
-          {health && (
-            <div className="status ok">
-              <p>✅ Status: <strong>{health.status}</strong></p>
-              <p>📢 Message: {health.message}</p>
-              <p>🕒 Time: {health.timestamp}</p>
+      <main className="main-content">
+        {currentView === 'dashboard' && (
+          <>
+            <div className="page-header">
+              <div>
+                <h2>Dashboard</h2>
+                <p>Overview of support ticket statistics</p>
+              </div>
             </div>
-          )}
-        </div>
+            <Dashboard onRefresh={setDashboardRefresh} />
+          </>
+        )}
 
-        <div className="card info">
-          <h2>Project Stack</h2>
-          <ul>
-            <li>⚛️ <strong>Frontend</strong>: React + Vite (this page)</li>
-            <li>🟢 <strong>Backend</strong>: Node.js + Express</li>
-            <li>🗃️ <strong>Database</strong>: SQLite (via better-sqlite3)</li>
-          </ul>
-        </div>
+        {currentView === 'tickets' && (
+          <>
+            <div className="page-header">
+              <div>
+                <h2>Tickets</h2>
+                <p>View and manage all support tickets</p>
+              </div>
+              <button
+                className="btn btn-primary"
+                onClick={() => setCurrentView('create')}
+              >
+                ➕ New Ticket
+              </button>
+            </div>
+            <TicketList onTicketClick={handleTicketClick} />
+          </>
+        )}
+
+        {currentView === 'create' && (
+          <>
+            <div className="page-header">
+              <div>
+                <h2>Create Ticket</h2>
+                <p>Submit a new support ticket</p>
+              </div>
+            </div>
+            <CreateTicket
+              onSuccess={() => {
+                setCurrentView('tickets');
+                handleTicketUpdated();
+              }}
+              onCancel={() => setCurrentView('tickets')}
+            />
+          </>
+        )}
+
+        {currentView === 'ticket-detail' && selectedTicketId && (
+          <TicketDetail
+            ticketId={selectedTicketId}
+            onBack={handleBackToTickets}
+            onUpdated={handleTicketUpdated}
+          />
+        )}
       </main>
     </div>
-  )
+  );
 }
 
 export default App
